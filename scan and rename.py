@@ -3,6 +3,9 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 import os
 
+column_name_actual = 'default_par_variable'
+column_name_new = 'exchange_variable'
+
 def scegli_file():
     root = tk.Tk()
     root.withdraw()  # Nasconde la finestra principale
@@ -27,14 +30,14 @@ def rinomina_colonna(db_path):
         
         nomi_colonne = [col[1] for col in colonne]
         
-        if "0" in nomi_colonne:
-            print(f"[INFO] Trovata colonna '0' nella tabella '{tabella}'")
+        if column_name_actual in nomi_colonne:
+            print(f"[INFO] Trovata colonna '{column_name_actual}' nella tabella '{tabella}'")
             nuova_tabella = f"{tabella}_temp"
-            colonne_modificate = [("n" if nome == "0" else nome) for nome in nomi_colonne]
+            colonne_modificate = [(column_name_new if nome == column_name_actual else nome) for nome in nomi_colonne]
             
             # Ricrea la tabella con la colonna rinominata
             colonne_definizione = ", ".join(
-                f'"{col[1] if col[1] != "0" else "n"}" {col[2]}'
+                f'"{col[1] if col[1] != column_name_actual else column_name_new}" {col[2]}'
                 for col in colonne
             )
             cursor.execute(f"CREATE TABLE {nuova_tabella} ({colonne_definizione})")
