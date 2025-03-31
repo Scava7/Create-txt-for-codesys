@@ -4,6 +4,9 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 import os
 
+PLC = "PLC"
+HMI = "HMI"
+
 def scegli_file():
     root = tk.Tk()
     root.withdraw()
@@ -12,16 +15,28 @@ def scegli_file():
         filetypes=[("Database SQLite", "*.db *.sqlite3"),("Database SQLite", "*.db *.sqlite") , ("Tutti i file", "*.*")]
     )
 
-def prepara_blocco(df, header_title):
-    # Prepara le colonne formattate
-    df["group_fmt"] = df["group"].apply(lambda g: f"(*{g}*)")
-    df["global_variable_fmt"] = df["global_variable"].apply(lambda g: f"{g};")
-    df["description"] = df["description"].fillna("")
+def prepara_blocco(df, header_title, device):
+    
+    # Group
+    df["group_fmt"] = df["group"].apply(lambda g: f"(*{g}*)")   # Prepara le colonne formattate
+    max_len_group = df["group_fmt"].str.len().max()             # Calcolo lunghezza cella per tabulare
+    
+    # Exchange variable name
+    max_len_exch = df["exchange_variable"].str.len().max()    # Calcolo lunghezza cella per tabulare
 
-    # Calcolo larghezze massime
-    max_len_group = df["group_fmt"].str.len().max()
-    max_len_exch = df["exchange_variable"].str.len().max()
-    max_len_glob = df["global_variable_fmt"].str.len().max()
+    # Global variable name
+    df["global_variable_fmt"] = df["global_variable"].apply(lambda g: f"{g};")  # Prepara le colonne formattate
+    max_len_glob = df["global_variable_fmt"].str.len().max()                    # Calcolo lunghezza cella per tabulare
+    
+    # Measurment unit
+    if "measurment_unit" in df.columns:
+        df["measurment_unit_fmt"] = df["measurment_unit"].fillna("-").apply(lambda u: f"[{u}]")      # Prepara le colonne formattate
+    else:
+        df["measurment_unit_fmt"] = ""  # oppure df["unit_fmt"] = [""] * len(df)                    # Oppure se non esiste la colonna, lascio vuoto
+    max_len_unit = df["measurment_unit_fmt"].str.len().max()                                        # Calcolo lunghezza cella per tabulare
+
+    # Description
+    df["description"] = df["description"].fillna("")    #riempi celle vuote con ""
 
     # Intestazione del blocco
     intestazione = [
@@ -34,26 +49,32 @@ def prepara_blocco(df, header_title):
 
     # Formattazione righe
     def formatta_riga(row):
-        group = row['group_fmt'].ljust(max_len_group + 4)
-        exch = row['exchange_variable'].ljust(max_len_exch + 4)
-        glob = row['global_variable_fmt'].ljust(max_len_glob + 4)
+        group = row['group_fmt'].ljust(max_len_group + 1)
+        exch = row['exchange_variable'].ljust(max_len_exch + 1)
+        glob = row['global_variable_fmt'].ljust(max_len_glob + 1)
+        unit = row['measurment_unit_fmt'].ljust(max_len_unit + 1)
         desc = row['description']
-        return f"{group}{exch}:= {glob}//{desc}"
+        if device == PLC:
+            return f"{group}{exch}:= {glob}//{unit}{desc}"
+        else:
+            return f"{group}{glob}:= {exch}//{unit}{desc}"
 
     righe = df.apply(formatta_riga, axis=1).tolist()
 
     return intestazione + righe
 
-def genera_file_txt(db_path, tabelle, output_path):
+def genera_file_txt(db_path, tabelle, device):
     conn = sqlite3.connect(db_path)
     contenuto = []
 
     for nome_tabella, header_label in tabelle:
         df = pd.read_sql_query(f"SELECT * FROM {nome_tabella}", conn)
-        blocco = prepara_blocco(df, header_label)
+        blocco = prepara_blocco(df, header_label, device)
         contenuto.extend(blocco)
 
     conn.close()
+
+    output_path = os.path.splitext(os.path.basename(path_db))[0] + f"_{device}.txt"
 
     with open(output_path, "w", encoding="utf-8") as f:
         f.write("\n".join(contenuto))
@@ -73,6 +94,7 @@ if __name__ == "__main__":
         tabelle_da_esportare = [
             ("mach_sts_bool", "STS BOOL"),
             ("mach_sts_int", "STS INT"),
+            ("mach_sts_dint", "STS DINT"),
         ]
-        file_output = os.path.splitext(os.path.basename(path_db))[0] + "_export.txt"
-        genera_file_txt(path_db, tabelle_da_esportare, file_output)
+        genera_file_txt(path_db, tabelle_da_esportare, device=PLC)
+        genera_file_txt(path_db, tabelle_da_esportare, device=HMI)
