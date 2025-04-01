@@ -7,7 +7,7 @@ import os
 if __name__ == "__main__":
     path_db = scegli_file()
     if not path_db:
-        print("Nessun file selezionato.")
+        print("Nessun file selezionato.")   
     elif not os.path.exists(path_db):
         print("File non trovato.")
     else:
