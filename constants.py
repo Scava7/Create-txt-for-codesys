@@ -1,0 +1,2 @@
+PLC = "PLC"
+HMI = "HMI"

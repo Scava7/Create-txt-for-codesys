@@ -3,8 +3,8 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 import os
 
-column_name_actual = 'default_par_variable'
-column_name_new = 'exchange_variable'
+column_name_actual = 'default_value'
+column_name_new = 'factory_value'
 
 def scegli_file():
     root = tk.Tk()
